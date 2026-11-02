@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-headless
+  namespace: roboshop
+  labels:
+    project: roboshop
+    tier: db
+    component: redis
+spec:
+  ports:
+  - protocol: TCP
+    port: 6379
+    targetport: 6379
+  clusterIP: None # Defines this as a Headless Service
+  selector:
+    project: roboshop
+    tier: db
+    component: redis
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: roboshop
+  labels:
+    project: roboshop
+    tier: db
+    component: redis
+spec:
+  ports:
+  - protocol: TCP
+    port: 6379
+    targetport: 6379
+  selector:
+    project: roboshop
+    tier: db
+    component: redis
+
+---
+
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: roboshop
+  labels:
+    project: roboshop
+    tier: db
+    component: redis
+spec:
+  selector:
+    matchLabels:
+      project: roboshop
+      tier: db
+      component: redis 
+  serviceName: "redis-headless" # Binds to the Headless Service above
+  replicas: 1 # Spawns web-0, web-1, and web-2
+  minReadySeconds: 10
+  template:
+    metadata:
+      labels:
+        project: roboshop
+        tier: db
+        component: redis
+    spec:
+      containers:
+      - name: redis
+        image: sundarkumar135/redis:7
+        volumeMounts:
+        - name: redis
+          mountPath: /data
+  volumeClaimTemplates: # Automatically creates unique PVCs for each Pod
+  - metadata:
+      name: redis
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "roboshop-ebs" # Replace with your cluster's StorageClass
+      resources:
+        requests:
+          storage: 1Gi
